@@ -1,0 +1,369 @@
+市场活动模块介绍
+    业务功能
+    组织活动,需要创建的模块,设置活动的开始和结束时间以及成本等信息
+    表关系介绍
+    市场活动表
+        tbl_activity
+            一对多,指的是和市场活动详情表的关系
+            多对多,指的是和线索表的关系,指的是和联系人表的关系
+            多对一(多个一对一),指的是和用户表的关系
+            看外键,外键在哪张表,哪张表就是多方.
+    市场活动详情表/市场活动备注信息表
+        tbl_activity_remark
+        外键,activityId
+        多方
+    线索表
+        tbl_clue
+    线索市场活动中间表
+        tbl_clue_activity_relation
+    联系人表
+        tbl_contacts
+    联系人和市场活动的中间表
+        tbl_contacts_activity_relation
+    用户表
+        tbl_user
+    市场活动表中的字段
+        id 32位随机字符串
+        owner user表的外键(user表的id)
+        name
+        startDate
+        endDate
+        cost
+        description
+        createTime 创建时间是19位的时间格式,2021-07-18 10:52:10  (10位的话就是年月日)
+        createBy 创建人是当前操作用户
+        editTime
+        editBy
+        isDelete(逻辑删除字段,先删除,后续再建立)
+未分页查询
+1.跳转至市场活动页面
+     在工作台下找到index中的市场活动标签，将href更改为workbench/activity/toIndex.do
+     创建ActivityController类命名为/workbench/activity
+     创建别名为toindex.do的方法，return到"/workbench/activity/index"
+2.跳转页面时自动查询数据显示到页面上
+    创建一个findActivityList的function函数
+    函数内书写ajax，Url发送地址到workbench/activity/findActivityList.do
+    首次创建要创建/workbench/activity/类
+    再创findActivityList.do方法
+    然后依次创建ActivityService接口，ActivityServiceImpl实现类，ActivityDao接口
+    和ActivityDao.xml映射文件
+    调用查询方法一路创建下去
+    sql语句书写  注意，本次是多表查询
+    咱们查询的是tbl_activity的数据
+    我们希望前台显示的所有者显示的是中文而不是一串id，在tbl_activity中，owner是tbl_user的外键也就是
+    tbl_user的id,
+    所以咱们要根据tbl_activity的外键owner查询在tbl_user中对应的name（owner就是tbl_user的id
+    所以可以根据这个查询）
+     select
+            a.id,
+            u.name as owner,//这里咱们给user表的name起名为owner,这样前台显示的数据就是表面上
+                                为owner实际上是u的name,这里并不是说把owner字段改成了name,
+                                owner字段还是owner字段只不过真正的owner要用a.owner来调用
+            a.name,
+            a.startDate,
+            a.endDate,
+            a.cost,
+            a.description,
+            a.createTime,
+            a.createBy,
+            a.editTime,
+            a.editBy
+            from tbl_activity a,tbl_user u//给两个表起别名
+            where u.id = a.owner          //查询条件就是user的id与activity的owner相等的数据
+     前台显示查询的数据
+            本次通过ajax加载的页面，自然通过$.each来加载数据
+            通过html封装字符串在加载到页面上
+            $.each(data.data,function (i,n) {
+            				    html+='<tr class="'+(i%2==0?'active':'')+'">'
+            					html+='<td><input type="checkbox" /></td>'
+            					html+='<td><a style="text-decoration: none; cursor: pointer;" onclick="window.location.href=\'detail.html\';">'+n.name+'</a></td>'
+            					html+='<td>'+n.owner+'</td>'
+            					html+='<td>'+n.startDate+'</td>'
+            					html+='<td>'+n.endDate+'</td>'
+            					html+='</tr>'
+            				})
+            				$("#activityListBody").html(html);
+
+            activityListBody为select的id
+分页查询
+    很简单，就是在前台通过ajax传递两个参数（1，2）//pageNo,pageSize  1，2表示 查询第一页，每页显示两条数据
+    在controller中接收，
+    并计算起始索引，将起始索引与pageSize(2)传入service调用的方法里   起始索引=(pageNo-1)*pageSize
+    然后将参数一直传递到后台的映射文件
+    通过limit分页查询
+    limit #{pageNo},#{pageSize}
+将公共的返回值封装成一个类
+    比如resultMap,每次返回都要重新定义，为了方便索性将其抽取并封装起来
+    在crm下创建一个common的公共包，包中创建一个名为BaseResultPageEntity的resultMap的实体类
+    构造方法、set之类的自己创建
+    定义了code,msg,data属性，
+    在里面书写ok方法（当操作成功时平时在resultMap中封装的东西）与
+    error方法（当操作失败时平时在resultMap中封装的东西）
+    定义好以后就不需要返回值类型为Map集合，创建newMap在put，返回值类型变为了BaseResultPageEntity
+    return BaseResultPageEntity.ok(10000,xxxx,xxxlist)/BaseResultPageEntity.error(10001,xxx);
+    还需要创建一个为分页的resultMap结果集BaseResultEntity，内容与上面一致
+    BaseResultPageEntity有特有的参数但是目前没设置所以感觉BaseResultPageEntity与BaseResultEntity
+    内容似乎一样
+分页组件的引入
+    往jquery中引入名为bs_pagination的文件夹，我在引入时不知道为啥没有编译到target文件夹内，只好
+    删除又重新粘贴一遍才成功
+    把原先页面中的组件注释掉
+    并加一个div标签，id为activityPage
+    初始化分页组件标签，位置在
+    $("#activityListBody").html(html)下面（下面的直接复制使用即可）
+    $("#activityPage").bs_pagination({
+    					currentPage: data.pageNo, // 页码
+    					rowsPerPage: data.pageSize, // 每页显示的记录条数
+    					maxRowsPerPage: 20, // 每页最多显示的记录条数
+    					totalPages: data.totalPages, // 总页数
+    					totalRows: data.totalCount, // 总记录条数
+
+    					visiblePageLinks: 3, // 显示几个卡片
+
+    					showGoToPage: true,
+    					showRowsPerPage: true,
+    					showRowsInfo: true,
+    					showRowsDefaultInfo: true,
+
+    					//当点击了分页组件的页码(第几页,上一页,下一页,首页,尾页,跳转到第几页...)
+    					onChangePage : function(event, data){
+    						console.log("onChangePage被调用了,重新发送请求查询列表数据")
+    						findActivityList(data.currentPage , data.rowsPerPage);
+    					}
+    				});
+    在findActivityList方法中return方法时ok方法中所传的不仅仅是原来的code、msg,activityList
+    还有 pageNo,pageSize,totalPages,totalCount
+    实体类中也假如了这几个属性，并且重写了有参构造方法
+    而totalPages、totalCount这俩参数通过查询方法手动查询
+    而totalPages是查询出来的
+    Long totalCount=activityService.findTotalCount()
+    totalCount是根据totalPages计算出来的
+    根据总记录数计算出总页数
+    根据当前数剧是否能整除，返回整除后数据或不能整除的数据+1的结果
+    Long totalPages = totalCount % pageSize == 0 ? totalCount / pageSize:totalCount / pageSize +1;
+
+日历组件的引入
+    日历组件事先已经准备好了
+    所以初始化日历组件
+    $(".time").datetimepicker({
+
+    			minView: "month",
+    			language:  'zh-CN',
+    			format: 'yyyy-mm-dd',
+    			autoclose: true,
+    			todayBtn: true,
+    			pickerPosition: "bottom-left"
+    		});
+      在开始日期、结束日期的样式中加入 time,并设置为只读
+过滤条件查询：
+    给名称、所有者、开始日期结束日期、查询设置id
+    查询设置点击事件，内调用findActivityList（1，2）方法
+    通过.var()获取名称、所有者、开始日期结束日期的过滤参数
+    参数通过ajax传递到后台
+    接收传过来的参数
+    创建条件查询方法
+    List<Activity> activityList = activityService.findActivityListCondition(
+                    pageNoIndex,
+                    pageSize,
+                    activityName,
+                    owner,
+                    startDate,
+                    endDate);
+    一路调用至sql映射文件
+    查询总记录数需要传参，所以注释掉原来的
+    Long totalCount=activityService.findTotalCountCondition(
+                    activityName,
+                    owner,
+                    startDate,
+                    endDate);
+    一路调用至sql映射文件
+    sql语句书写具体去映射文件看
+过滤条件查询优化:
+    之前的条件查询存在着一个缺陷:当在条件查询输入框中即使不点击查询，而是点击翻页/切换页数
+    也会自动查询输入框中的数据，这是因为在之前的代码中加载页面后会自动获得输入框数据并传递到
+    后台进行查询,
+    但如果通过click事件获取输入框中的参数，即使在click中书写完ajax后由于页面的加载也会重新调用
+    “跳转时加载页面”的事件导致查询了全部数据覆盖了条件查询，因此这条路行不通
+    所以要在下面设置四个输入框对应的隐藏输入框，设置好id
+    在click事件中获取到原输入框的数据并存入隐藏输入框，在页面加载时通过ajax传递的是隐藏输入框的数据
+    这样跳转页面加载页面时也不会自动查询（因为没有点击查询，隐藏输入框的数据没改变，自动查的也是之间点击
+    查询时的数据）
+新增市场活动
+    点击创建按钮打开模态窗口并回显数据
+        1.创建按钮设置id，绑定click事件
+        2.事件内通过ajax发送请求到settings/user/findAll.do
+        3.创建findAll.do方法，本次返回值类型为BaseResultEntity<List<User>>
+          因为查询并返回的结果类型为BaseResultEntity<List<User>>
+        4.一路创建至sql映射文件
+          不能select * from tbl_user,因为这样会将密码也返回
+        5. List<User> userList=userService.findAll();
+           判断userList是否为null?抛异常：return BaseResultEntity(10000,"xxx",userList)
+        6.前台数据接收，设置<select>的id,并将所有者、开始日期等等id改的符合要求
+          通过循环封装好字符串回显数据
+        7.打开模态窗口
+          $("#createActivityModal").modal("show");
+          createActivityModal为创建市场活动的id
+    新增数据
+        1.点击保存按钮提交数据，绑定click事件
+        2.获取输入框中的值
+        3.点击保存通过ajax提交，若code==10000
+          刷新页面（重新调用findActivityList函数）
+          关闭模态窗口$("#xxx"). model("hide")
+        4.url中是workbench/activity/save.do
+          创建sava.do方法，前台传递的数据用Activity接收
+          由于Id不能为空，一会我们在后台自己设置，同理creatBy与createTime也是
+          因此通过
+          String createBy=((User)session.getAttribute("user")).getName();
+          String creatTime= DateTimeUtil.getSysTime();
+          设置所需要的属性
+          通过activityService调用所需要的方法，一路写到sql映射文件
+          在serviceImp层要设置属性
+          即
+          activity.setId(UUIDUtil.getUUID());
+          activity.setCreateTime(creatTime);
+          activity.setCreateBy(createBy);
+全选与反选
+         在封装字符串那里设置name=ck,value=n.id
+         设置全选框id为selectAll
+
+         全选
+         根据全选框状态将设置其他框的状态
+         $("input[name=ck]").prop("checked",this.checked);
+         反选
+         根据选中框长度与所有框长度设置反选
+         $("#selectAll").prop("checked",$("input[name=ck]").length == $("input[name=ck]:checked").length)
+市场活动修改功能的实现
+         点击修改按钮回显数据
+            回显用户列表
+            回显其他数据
+
+            修改按钮设置id=openEditActivityModal
+            绑定click事件
+            若不选中或选中多个不允许修改
+            （$cks=$("input[name=ck]:checked")）
+            根据$cks的长度判断
+
+            符合条件后通过ajax调用之前写过的findAll.do方法
+            code==10000时封装字符串回显数据
+            之前在刚跳转页面时封装字符串显示全部数据，封装的标签中中有两个属性，
+            value=n.id，这个是为了后续的（比如现在的编辑）功能方便操作而设置的标记
+            要根据某一个选中的框来进行操作就用到id了
+            name=ck 这个是为了对整体进行操作（比如全选反选、校验）而设置的
+
+            接下来回显其他数据，在success中再发送一次ajax，调用方法是findById,一路
+            创建直到写完sql语句
+            若data.code=10000
+            通过("#xxx"）.val(data.data.name)之类的回显数据
+            还有个细节
+            前台不用回显数据的id但是我们要自己把他写到隐藏输入框中
+             $("#edit-activityId").val(data.data.id);
+         点击更新按钮保存数据
+            更新按钮设置Id绑定事件
+            获取输入框的数据
+            根据id更新(之前保存的id在这里用上了) 一个是标签中的value=n.id，一个是设置隐藏输入框时存入的Id
+            通过ajax发送数据虽然根据id更新但是要把所有数据发送(更新嘛，自然是更新所有数据)
+            若返回code为10000，更新列表(findActivityList（1，2）)与关闭模态窗口
+            创建updateById.do方法
+            这里是修改，所以修改人、修改时间属性要设置上了，即
+            String editBy = ((User) session.getAttribute("user")).getName();
+            String editTime = DateTimeUtil.getSysTime();
+            一路调用至sql语句，该抛异常抛异常
+            sql语句用动态sql
+
+         更新功能优化
+            之前的更新无论更新第几页数据刷新时都会返回到第一页数据中
+            因此加上这两行代码
+            //获取当前页数(为第几页)
+            var pageNo = $("#activityPage").bs_pagination("getOption","currentPage");
+            //获取当前记录条数
+            var pageSize = $("#activityPage").bs_pagination("getOption","rowsPerPage");
+            findListActivity(pageNo,pageSize)
+
+            将修改中的开始日期与结束日期设置为只读且能使用日历插件
+            在开始日期结束日期的input框中的class加入 “time”,readonly
+市场活动的批量上传与下载
+        知识点引入
+        POI
+           操作office软件的工具类
+        通过POI可以对office进行读写操作
+           POI中的对象
+             文档对象 HSSFworkbook
+             页码对象 HSSFsheet
+             行对象  HSSFrow
+             单元格对象 HSSFcell
+   前台上传文件的内容
+        name
+        startDate
+        endDate
+        cost
+        description
+   后台获取属性
+        id
+        owner
+        createBy
+        createTime
+
+点击导入按钮跳转到importActivityFile.do页面
+        为了通过submit的方式提交文件
+        在模态窗口中的imput框添加form框，设置id、action、method、enctype属性
+        注意！action指定路径前面不加/
+        enctype是文件上传操作时必需指定的属性
+        enctype="multipart/form-data
+        input框添加id与name
+        在控制器中创建importActivityFile.do方法
+        上传的文件在传到后台时会被解析成MultipartFile类型，需要用MultipartFile接收
+        接收名必须与input中的name名称一致
+    校验前台传过来的文件是否以xsl或xslx结尾
+    校验成功后完成上传功能
+
+    校验
+        获得上传的文件名
+        String filename=activityFile.getOriginalFilename();//activityFile为接收传过来的文件变量
+        获得最后一个点的下标并加1
+        Integer index=filename.lastIndexOf(".")+1;
+        将后缀名单独分离
+        String suffix=filename.substring(index);
+        校验是否以xsl或xslx结尾，否则抛出传统异常
+    上传
+        校验通过后要对传过来的文件重命名，因为如果后上传的文件名等于前上传的文件名
+        后面的会将其覆盖
+        重命名为上传时间+xsl
+        String newFileName=DateTimeUtil.getSysTimeForUpload()+".xls";
+        定义欲上传的路径
+        String path="D:\\shangchuan";//我传到D盘的shangchuan文件夹下了
+        将文件上传
+        activityFile.transferTo(new File(path+"/"+newFileName));
+    批量导入
+         //将内存文件转换为workbook对象
+           InputStream in=new FileInputStream(new File(path+"/"+newFileName));
+           //根据输入流向创建工作簿对象，HSSF只适用excel2003,也就是以xsl结尾的，以xslx无法使用HSSF
+           HSSFWorkbook workbook=new HSSFWorkbook(in);
+           //根据工作薄对象获取第一页对象
+           HSSFSheet sheet= workbook.getSheetAt(0);
+           //根据第一页对象获取最后的行号
+           int lastRowNum = sheet.getLastRowNum();
+           循环遍历每一行（除了第一行）
+           for循环中
+           //创建行对象，从第二行开始获取数据，第一行是表头无意义，因此i=1
+             HSSFRow row=sheet.getRow(i);
+             //获取行中的单元格数据，提供的数据共五个单元格
+             String name=row.getCell(0).getStringCellValue();
+             String startDate=row.getCell(1).getStringCellValue();
+             String endDate=row.getCell(2).getStringCellValue();
+             double cost=row.getCell(3).getNumericCellValue();//纯数字转换成double其他的转换成String
+             String description=row.getCell(4).getStringCellValue();
+             循环外创建集合对象arrayList
+             循环内创建实体类对象并给对象属性赋值
+             Activity activity=new Activity();
+             activity.setName(name);
+             activity.setStartDate(startDate);
+             activity.setEndDate(endDate);
+             activity.setCost(String.valueOf(cost));
+             activity.setDescription(description);
+             activity.setId(UUIDUtil.getUUID());
+             activity.setOwner(owner);
+             activity.setCreateBy(createBy);
+             activity.setCreateTime(createTime);
+             循环外将activity实体类赋给集合对象
+             activityService.saveActivityList(arrayList);
+             saveActivityList一路创建至sql语句

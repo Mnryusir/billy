@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yuzhi.crm.settings.dao.DictionaryValueDao">
+    <insert id="save">
+insert into tbl_dic_value
+        (
+        id,value,text,orderNo,typeCode
+        )
+        values
+        (
+        #{id},#{value},#{text},#{orderNo},#{typeCode}
+        )
+    </insert>
+    <update id="updateById">
+        update tbl_dic_value
+         <set>
+             <if test="value != null and value != ''">
+                 value=#{value},
+             </if>
+             <if test="text != null and text != ''">
+                 text=#{text},
+             </if>
+             <if test="orderNo != null and orderNo != ''">
+                 orderNo=#{orderNo},
+             </if>
+             <if test="typeCode != null and typeCode != ''">
+                 typeCode=#{typeCode},
+             </if>
+
+         </set>
+         where id=#{id}
+    </update>
+
+    <select id="findAllValueList" resultType="com.yuzhi.crm.settings.domain.DictionaryValue">
+        select * from tbl_dic_value
+    </select>
+    <select id="findById" resultType="com.yuzhi.crm.settings.domain.DictionaryValue">
+        select * from tbl_dic_value where id=#{id}
+    </select>
+    <select id="findDictionaryValueListByTypeCode" resultType="com.yuzhi.crm.settings.domain.DictionaryValue">
+        select * from tbl_dic_value where typeCode = #{code}
+    </select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

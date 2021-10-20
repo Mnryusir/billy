@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yuzhi.crm.settings.dao.DictionaryTypeDao">
+    <insert id="save">
+        insert into tbl_dic_type (code,name ,description) values (#{code},#{name},#{description});
+
+    </insert>
+
+    <update id="updateByCode">
+update tbl_dic_type set name = #{name},descripti on=#{description} where code=#{code};
+    </update>
+    <delete id="deleteByCodes">
+        delete from tbl_dic_type  where code in
+        <foreach collection="array" item="code" separator="," open="(" close=")">
+                #{code}
+        </foreach>
+    </delete>
+
+
+    <select id="findAll" resultType="com.yuzhi.crm.settings.domain.DictionaryType">
+            select *from tbl_dic_type
+
+    </select>
+    <select id="findDictionaryTypeById" resultType="com.yuzhi.crm.settings.domain.DictionaryType">
+        select * from tbl_dic_type where code=#{code }
+    </select>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

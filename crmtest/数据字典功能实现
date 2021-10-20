@@ -1,0 +1,397 @@
+1.在系统设置中点击数据字典跳转到数据字典页面
+        将settings下的index.jsp页面中数据字典字段的href更改为settings/dictionary/toIndex.do
+        注意，个人发现前端页面的href指向的几乎都是中央处理器类Controller的处理方法的别名
+        创建一个DictionaryController类别名为settings/dictionary,方法别名为toIndex.do
+        return到要跳转的页面”/settings/dictionary/index“(这里有视图解析器哦，
+        为什么return能这么写而不能直接href=这玩意的原因，看不懂请忽略，无伤大雅)
+2.加载数据字典首页面
+        在dictionary的index.jsp页面中修改window.open(),更改为
+        window.open("settings/dictionary/type/toIndex.do","workareaFrame");
+        再强调一遍，window.open似乎就是用来加载页面的，刚跳转时默认加载某个页面
+        在DictionaryController类中书写一个别名为toIndex.do的toTypeIndex的方法
+        return到type中的index,把type包下的html更改为jsp
+                1.修改html为jsp
+                2.ctrl+R,将../替换为”“空字符串（就是删除所有的../）
+                3.将html中的head及以上更改为jsp中的base及以上
+                    <%@ page contentType="text/html;charset=UTF-8" language="java" isELIgnored="false" %>
+                    <%
+                    	String basePath = request.getScheme() + "://" + request.getServerName() + ":" + 	request.getServerPort() + request.getContextPath() + "/";
+                    %>
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                    	<base href="<%=basePath%>">
+3.点击侧边栏的字典类型字典值跳转至对应页面
+        在Dictory下的index中找到对应的字段将跳转路径分别更改为
+        settings/dictionary/type/toIndex.do
+        settings/dictionary/value/toIndex.do
+        在dictionaryController中创建跳转至value的方法（跳转至type的首页面方法上一步已经创建了）
+        return到value的首页面
+数据字典模块介绍
+        *数据字典模块的来源
+         在没有数据字典模块的时候,当出现一个修改功能时,是页面上的属性值需要修改
+         非技术人员不知道怎么操作,只能我们坐车去公司,然后加班,然后修改
+         可能就几分钟搞定了
+         于是数据字典模块就衍生出来了
+         可以让非技术人员,通过页面,操作修改页面上的属性和对应的值
+        *数据字典类型
+         数据字典类型有一个code,对应了数据字典值
+         code:sex
+         数据字典值
+         value:男性 text:男性 typeCode:sex
+         value:女性 text:女性 typeCode:sex
+         性别男女
+         页面上想要将性别对应的男和女,修改为男性或女性
+        *数据库表解构介绍
+         tbl_dic_type:数据字典类型表,一方
+          code:主键,代表是有意义的字段,主键指的是一个具体的属性
+          比如:性别(sex),年龄(age)...
+          name:名称
+          description:描述
+         tbl_dic_value:数据字典值表,多方
+          id:主键,无意义的字段,仅代表唯一标识,32位随机字符串
+          text:标签中文本显示的内容,文本内容
+          value:value属性内容,...
+          orderNo:排序号,升序排序
+          typeCode:外键,指向tbl_dic_type的主键(code)
+        *业务描述
+         数据字典模块
+         数据字典类型模块
+         查询(传统)
+         全选/反选(传统)
+         新增
+         修改
+         删除
+        *数据字典值模块
+         查询(ajax)
+         全选/反选(jquery)
+         新增
+         修改:作业
+         删除:作业
+         重复的模块内容是留作作业的
+数据字典类型查询业务的实现
+        1)查询不是手动查询，而是跳转到字典类型页面时自动显示出来
+          所以代码写在toTypeIndex下
+        2)创建一个
+          List<DictionaryType> dictionaryTypeList=dictronaryService.findAllTypeList()
+          dictronaryService是service中的业务接口（目前还没创建）
+          findAllTypeList是接口中的查询方法（目前也还没创建）
+          DictionaryType是一个实体类，就是咱们要查询数据库表对应的类
+          给toTypeIndex注入一个Model类型的参数（类似于ModelAndView,都是用来把数据放到request中）
+          判断dictionaryTypeList返回来的是不是null，不是就将dictionaryTypeList放到request中
+          通过model.addAtribute("dictionaryTypeList",dictionaryTypeList)
+        3)创建DictionaryService接口，内有findAllTypeList方法
+        4)实现类实现该接口,创建两个对象dictionaryTypeDao与dictionaryValueDao
+          dictionaryValueDao虽然现在用不到但是后面会用到
+          实现类中直接return刚创建的type的dao对象的findAllTypeList方法
+        5)创建DictionaryTypeDao接口、DictionaryValueDao接口(目前用不上但后面用上)以及对应的映射文件
+          DictionaryTypeDao接口调用findAll()方法,在映射文件中书写sql语句
+          select * from tbl_dic_type
+        6)将查询到的数据在type下的index页面中显示出来
+          用<c:forEach>标签，内部用${}
+            <c:forEach items="${dictionaryTypeList}" var="dt" varStatus="ds">
+            				<tr class="${ds.index%2==0?'active':''}">
+            					<td><input type="checkbox" /></td>
+            					<td>${ds.count}</td>
+            					<td>${dt.code}</td>
+            					<td>${dt.name}</td>
+            					<td>${dt.description}</td>
+            				</tr>
+            			</c:forEach>
+          varStatus参数(varStatus似乎表示排序)
+                          index:从零开始计数，
+                          count:从一开始计数
+                          current:当前遍历的对象
+                          first:是否是第一个 true/false
+                          last:是否是最后一个 true/false
+          active是一个显示的样式，代码中的意思是如果排序号是偶数,该行使用active样式，否则不使用
+jstl标签中不允许有空格！！！！
+全选与反选功能实现
+    全选
+        1)全选框设置id selectAll,反选框设置name ck
+        2)创建<script>标签，标签中设置全选框点击事件触发全选功能
+        3)通过this.checked获取全选框的选中状态，通过var$cks=$("input[name=ck]")获取复选框的数组
+        4)创建循环，i<$cks.length，创建if条件语句，如果全选框是选中状态，cks[i].checked=true,否则等于false
+    反选
+        1)通过点击复选框触发反选事件
+        2)获取所有复选框的数量和所有选中复选框的数量
+            var ckLength=$("input[name=ck]").length;
+            var ckdLength=$("input[name=ck]:checked").length;
+        3)判断两者是否相等，相等则触发反选
+            $("#selectAll").prop("checked",true);
+            注意这里只能用prop，不能用checked=true(因为checked会变成untifind)
+
+本人发现service、serviceImpl、dao接口都没有返回值的，就是不需要return,因为这些都是被层层调用的
+返回值在Controller之中
+数据库中的占位符中的名字与dao中传过来的参数名字相同才能一一对应（虽然基本数据类型不用，但是这样记方便记忆）
+ajax里success中的msg不需要手动写，调用传回来的data.msg即可	$("#msg").html(data.msg);
+ajax传的参数要一层一层的传一直传到映射文件
+ajax传过去的参数与实体类属性一致时可以用实体类对象接收
+
+新增功能实现：
+*编码输入框中输入的内容需要查询数据库,是否存在
+*编码作为主键,肯定是不允许重复
+*如果数据库中有当前的编码,则无法进行新增
+*如果数据库中没有当前的编码,则可以进行新增
+*根据返回的标记进行判断是否可以新增
+*如果可以新增
+*点击保存按钮,新增一条数据字典类型记录
+    1）跳转至创建页面
+        在type下的index.jsp中找到创建<span>标签，将路径改为settings/dictionary/type/toSave.do
+        在Controller类中创建对应的跳转方法
+    2）校验
+        *让输入的code不为空
+           在save.jsp中给code所在的字段绑定一个“失去焦点”的事件，事件中获取code的值，若为空字符串,在下面
+           加一个id为msg的span标签输出“code编码不能为空”并return;
+        *让输入的code与数据库中的code不重复
+            ajax发送输入的code编码至settings/dictionary/type/findDictionaryTypeByCode.do
+            如果返回的code(不是数据库中的code与刚刚发送的code,返回的code指咱们自定义的提示信息)
+            为10000则允许插入，反之亦然
+            创建/type/findDictionaryTypeByCode.do方法
+            创建Map集合resultMap
+            返回值为null，code设置为10000，不为nullcode设置为10001  resultmap.put("code",10000/10001)
+            方法中通过service调用findDictionaryTypeById()方法
+            然后实现类、dao到映射文件
+            映射文件书写sql语句
+        *点击保存按钮插入数据
+            保存按钮设置一个id为saveBtn,绑定单击事件
+            获取编码、名称、描述的val
+            保存前再次进行校验，若code==""，输出不允许为空
+            重复就不那么麻烦了，若判断span中有字，输出不允许重复（不为空后提示信息就清掉了，有提示信息一定是重复了）
+            ajax发送三个参数到后台settings/dictionary/type/save.do
+            老规矩，map集合，接收三个参数，用实体类对象接收就行，因为发送的与实体类对象中属性一致
+            调用service中的saveDictionaryType方法，然后一路创建到最后写sql语句
+            注意：在serviceImp中让dao返回一个int类型的数值count
+            如果count<=0，则 throw new AjaxRequestException("新增失败");
+修改功能实现
+    1.点击编辑时要勾选一个数据框，当没勾选或勾选超过一个时要进行提示
+      给type下index.jsp的编辑设置id="toEditBtn"并绑定一个click事件，通过var len=$("input[name=ck]:checked")
+      获取所有勾选的数据框对象，再通过len.length来进行提示信息
+    2.跳转至编辑页面，只是跳转时可以不用ajax，通过window.location的方式来跳转
+      window.location.href="settings/dictionary/type/toEdit.do?code="+ckValue;
+      ckValue是len[0].value,而value需要我们设置为{dt.code}
+      创建toEdit.do方法，根据之前创建的findDictionaryTypeById方法通过code查询数据后
+      将返回的对象放到model.addattribute里（为了回显数据）
+    3.回显数据   将name、description中的value更改为${dictionary.name/description}
+      (dictionary就是返回的对象)
+      通过readOnly将code编码设置为只读
+    4.点击更新修改数据
+      更新按钮设置id为updateBtn并绑定click事件
+      获取code、name、description数据
+      判断code是否为空，为空则输出提示信息
+      通过ajax传入数据
+      url:"settings/dictionary/type/edit.do",
+      success中的code与msg与发送的数据中有无code、msg无关
+      创建/type/edit.do方法并用Dictionary对象接收传过来的参数
+      通过dictionaryService调用updateTypeByCode方法
+      new一个resultMap集合
+      code为10000,msg为新增成功
+      通过window跳转至首页面
+      updateTypeByCode方法一路实现到映射文件
+      在serviceImpl层时判断新增数据如果小于等于0则抛出ajax异常
+删除功能实现
+      1.单击删除时弹出提示信息请选中一条数据
+            给删除按钮设置id="batchDeleteBtn“,绑定click事件,获取选中的条数，通过
+			var $cks=$("input[name=ck]:checked")获取,
+			拼接字符串与提示信息(提示信息就是您要删除xxx、xxx...这些数据吗)
+			字符串拼接:拼接字符串通过ajax的url将数组参数发送过去（没错，是一个数组）
+			     创立一个i<$cks.lengh的循环，在循环内
+			     param+="codes="+$cks[i].value（value之前设置的是对应的code）
+			     （特么的codes后面这个等于号一定要设置！！！）
+			     给param拼接&
+			     if（i<$cks.lengh-1）{param+="&"}
+			提示信息拼接:
+			     拼接提示信息是为了动态给用户显示您要删除某些数据嘛
+			     给复选框的”名称“设置id为name_${dt.code}，因为name相同的有很多，所以只能动态
+			     设置id了，然后通过id将名称那一栏的文本获取到拼到一块并用、分隔
+			     names+=$("#name_"+$cks[i].value).html();
+      2.单击删除是提示”是否删除数据“
+            if（confirm（”是否删除数据？“））{
+            ........................
+            }
+            ajax发送请求
+            只通过Url发送参数即可
+            settings/dictionary/type/deleteDicTypesByCodes.do?"+param
+      3.创建deleteDicTypesByCodes.do方法,用String[] 接收传过来的param
+      通过dictionary调用deleteDicTypesByCodes方法
+      老规矩，一路创建
+      老规矩，serviceimpl判断抛异常
+      到映射文件时，这次传递的是一个数组而不是参数，因此code in
+      <foreach collection="array" item="code" separator="," open="(" close=")">
+              #{code}
+      </foreach>
+      array指传过来的数组,code值单个数据,separator、open、close代表了（？，？，？）
+
+      后台根据编码进行删除操作即可
+      由于tbl_dic_type和tbl_dic_value是一对多的关系
+      如果一方有关联的多方数据,是不允许被删除的
+      尤其是添加了外键的数据,在删除时,会自动报错
+      由于公司中通常如果有外键关联关系的,为了提升mysql性能,一般是不建立外键关系的
+      如果在mysql添加了外键,mysql会自动维护外键关系数据
+      但是我们的外键关系,要通过一对多或多对多的关联进行查询出来
+      如果关联关系还在,则无法删除数据,如果没有外键关系,则可以删除
+
+查询字典值功能实现
+      1.跳转至数据字典值页面时自动查询，创建<script>,ajax直接发送请求到
+      settings/dictionary/value/findDictionaryValueList.do，
+      创建findDictionaryValueList方法，dictionaryservice调用findDictionaryValueList方法
+      返回是一个List<DictionaryValue>类型
+      创建DictionaryValue实体类
+      接着老规矩一路调用，就是这次调用调用的valueDao
+       sql语句        select * from tbl_dic_value
+      查询数据返回后将查询的数据显示到页面上
+            创立一个html=""
+            $.each(data.data,function (i,n)循环遍历返回的数据
+            html += '<tr class="'+(i%2==0?'active':'')+'">';
+            				html += '<td><input type="checkbox" /></td>';
+            				html += '<td>'+(i+1)+'</td>';
+            				html += '<td>'+n.value+'</td>';
+            				html += '<td>'+n.text+'</td>';
+            				html += '<td>'+n.orderNo+'</td>';
+            				html += '<td>'+n.typeCode+'</td>';
+            				html += '</tr>';
+            上述方式封装到html
+            通过
+                $("#dictionaryValueListBody").html(html);
+                回显数据（dictionaryValueListBody为<tbody>的id）
+                回显数据前清空<tbody>中的内容
+数据字典值新增功能实现
+    *数据字典值模块新增操作
+    *点击创建按钮,跳转到新增页面(save.jsp)
+    *页面加载完成后,发送ajax请求
+    *获取数据字典类型列表
+    *加载到字典类型编码的下拉框位置
+    *填充数据
+    *选择数据字典类型编码
+    *输入字典值
+    *文本
+    *排序号
+    *点击保存按钮,新增一条数据字典值记录
+      1.加载创建页面时将数据字典类型code加载到‘字典类型编码’下拉框中
+           点击创建跳转页面 href指向并创建/value/toSave.do方法，return到save.jsp
+           在sava.jsp页面中创建一个findTypeList函数
+           函数中ajax发送路径到/type/findTypeList.do方法中(自己创)
+           方法里调用dictionaryService.findAllTypeList()方法
+           findAllTypeList()之前创建过了,返回一个List<DictionaryType>类型的集合
+           resultMap中返回code、msg、data
+           ajax中接收数据code==10000时数据
+           创立html+="";
+           创建$.each循环遍历返回数据
+           若i==0,html+="<option></option>"//默认下拉框显示的是空而不是某条数据
+           html+='<option value="'+n.code+'">'+n.name+'</option>'
+           value发送的是code,但是下拉框显示的是code对应的名称
+
+      增删改成功后一般ajax success都要跳转页面的
+      2.点击保存按钮保存新增数据
+        在findTypeList函数中继续书写
+        获取字典类型编码、字典值、描述、排序号的值
+        编码与字典值不能为空，对他们俩进行非空判断提示
+        校验通过后通过ajax发送数据
+        返回data为10000跳转数据字典值的Index页面
+        url:"settings/dictionary/value/saveDictionaryValue.do",
+        创建saveDictionaryValue.do方法，用DictionaryValue实体类接收传过来的参数
+        通过service调用saveDictionaryValue方法，
+        一路实现到sql，抛异常的抛异常
+        但是注意，DictionaryValue除了传过来的四个参数还有一个id，id不是咱们手动设置
+        而是通过UUID工具自动生成,不用说，肯定在Serviceimpl实现该功能
+        但是UUID生成的36个字符串中有4个”-“,要通过replaceAll来去除4个-（但是我看老师在main方法中
+        去除的，我感觉根本没有完成去除似的）
+        sql语句正常实现
+后端调前端数据通过前端ajax接收或href携带参数或Url携带参数
+前端调后端通过data返回数据或model存入对象直接调
+查询异常在controller判断
+根据标签value查询数据时value应该是唯一标识
+
+数据字典编辑功能实现
+        1.点击编辑按钮校验是否选中数据
+            通过$("input[name=ck]:checked")操作
+            但要提前给checkbox设置name=ck,value=n.id
+            编辑按钮设置Id toEditBtn
+            把id通过value取出来=id
+            查询操作不用ajax
+            直接window.location跳转页面携带参数id
+            window.location.href="settings/dictionary/value/toEdit.do?id="+id;
+            创建/value/toEdit.do方法接收String类型的id
+            通过service调用findDictionaryValueById方法将id传入返回Dictionary对象
+            一路创建下去直到sql
+            这里在controller中抛出TranditionRequestException异常（因为没有ajax所以抛出的不是ajax异常）
+            并将返回的对象通过model放到request内
+            然后return到"/settings/dictionary/value/edit"
+
+            前端回显数据，将对应的value改成${dictionary.对应属性}
+            但是注意字典类型编码是一个下拉框
+            所以直接在edit.jsp中的<script>标签中写ajax
+            url调用settings/dictionary/type/findTypeList.do
+            findTypeList.do之前写好了可以直接返回所有字典类型对象
+            根据返回data，先拼接字符串完成下拉框标签显示
+            里面value=n.code,文本内容=n.name
+            回显成功
+        2.点击保存更新数据
+            先获得所有文本框的数据
+            这里还得通过”${dictionary.id}“获得id，因为dictionaryValue有五个属性
+            ，不获得id无法用对象接收
+            校验，若为""输出提示信息
+            通过ajax发送
+            url:"settings/dictionary/value/updateDictionaryValue.do",
+            创建/value/updateDictionaryValue方法并用对象接收
+            调用updateDictionaryValue方法，一路创建加抛异常
+            返回data为10000跳转页面
+            在sql语句中更新数据 动态sql
+             update tbl_dic_value
+                     <set>
+                         <if test="value != null and value != ''">
+                             value=#{value},
+                         </if>
+                         <if test="text != null and text != ''">
+                             text=#{text},
+                         </if>
+                         <if test="orderNo != null and orderNo != ''">
+                             orderNo=#{orderNo},
+                         </if>
+                         <if test="typeCode != null and typeCode != ''">
+                             typeCode=#{typeCode},
+                         </if>
+
+                     </set>
+                     where id=#{id}
+全选反选（b版）
+        页面动态显示后台查询的列表方式目前有两种
+            一种是直接后台将数据通过model放到request中，前台通过<c:foreach>循环展示
+            用该标签还得额外把jquery包导入进来(自己从教材粘贴)
+            另一种是前台本来用的ajax，在success中将数据封装至html中通过id选择器.html(html)
+
+        这两种全选与反选的方式也不同
+        第一种全选
+            点击全选标签触发事件后，获得所有标签对象，通过循环为每一个对象的checked赋值
+            完成全选功能   $cks[i].checked=true/false
+        第一种反选
+            点击其他复选框出发事件$("input[name=ck]").click(function ()
+            获取选中复选框与所有复选框长度，若二者长度相等则完成反选操作
+            $("#selectAll").prop("checked",true/false)
+        第二种全选
+            点击全选标签触发事件
+            直接把所有标签的状态设置为与全选框状态一致
+            $("input[name=ck]").prop("checked",this.checked);
+        第二种反选
+            无法点击其他复选框触发事件，因为通过ajax的方式加载显示页面
+            理论上function()加载完毕时,ajax还没加载（虽然咱们肉眼感觉不到）
+            页面上还没有的东西自然无法点击，也无法绑定事件（异步加载的方式是不能够直接通过标签的属性绑定事件的,事件的失效）
+            因此此时要通过父标签的on事件来给异步加载的子标签进行绑定
+            //参数1:事件名称
+            //参数2:绑定的子标签的对象
+            //参数3:触发的回调方法
+            $("#dictionaryValueListBody").on("click","input[name=ck]",function () {
+                            $("#selectAll").prop(
+                                "checked",
+            					$("input[name=ck]:checked").length == $("input[name=ck]").length
+            				)
+                        })
+
+
+
+
+
+
+
+
+
