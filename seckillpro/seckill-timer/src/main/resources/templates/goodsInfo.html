@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script th:src="@{|/js/jquery.min.js|}"></script>
+    <script th:src="@{|/js/jquery.countdown.min.js|}"></script>
+    <script th:src="@{|/js/secKill.js|}"></script>
+    <script th:inline="javascript" th:object="${goods}">
+        $(function(){
+            //调用秒杀的初始化方法并传递参数
+            //注意:时间需要传递对应的毫秒
+            secKillObj.fun.initSecKill([[*{id}]],[[*{startTime.getTime()}]],[[*{endTime.getTime()}]],[[*{price}]])
+        })
+    </script>
+</head>
+<body>
+    <div th:object="${goods}">
+        <div style="float: left">
+            <img th:src="*{imageUrl}">
+        </div>
+        <div style="float: left;margin-top: 100px">
+            <span th:text="*{nameDesc}"></span><br>
+            <span th:text="*{name}"></span>
+            <span th:text="*{price}"></span><br><br>
+            <span >
+                <input type="button" id="secKillBtn" value="立即抢购" disabled>
+                <span id="seckillTip"></span>
+            </span>
+        </div>
+    </div>
+</body>
+</html>

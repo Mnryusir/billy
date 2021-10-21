@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seckill.orders.mapper.OrdersMapper">
+  <resultMap id="BaseResultMap" type="com.seckill.orders.model.Orders">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="uid" jdbcType="INTEGER" property="uid" />
+    <result column="goods_id" jdbcType="INTEGER" property="goodsId" />
+    <result column="buy_num" jdbcType="INTEGER" property="buyNum" />
+    <result column="buy_price" jdbcType="DECIMAL" property="buyPrice" />
+    <result column="order_money" jdbcType="DECIMAL" property="orderMoney" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="status" jdbcType="INTEGER" property="status" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    id, uid, goods_id, buy_num, buy_price, order_money, create_time, status
+  </sql>
+
+  <insert id="insert" parameterType="com.seckill.orders.model.Orders">
+    insert into orders (uid, goods_id,
+      buy_num, buy_price, order_money, 
+      create_time, status)
+    values ( #{uid,jdbcType=INTEGER}, #{goodsId,jdbcType=INTEGER},
+      #{buyNum,jdbcType=INTEGER}, #{buyPrice,jdbcType=DECIMAL}, #{orderMoney,jdbcType=DECIMAL}, 
+      #{createTime,jdbcType=TIMESTAMP}, #{status,jdbcType=INTEGER})
+      <!--
+        插入后获取记录主键
+       -->
+      <selectKey keyColumn="id" keyProperty="id" resultType="int" order="AFTER">
+        select @@identity
+      </selectKey>
+  </insert>
+
+</mapper>

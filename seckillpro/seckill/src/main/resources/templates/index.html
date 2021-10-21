@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div th:each="goods:${goodsList}" th:object="${goods}">
+        <a href="javascript:void(0)" th:onclick="|showGoodsInfo(*{id})|">
+            <img th:src="@{|/*{imageUrl}|}"><br>
+            <span th:text="*{nameDesc}"></span><br>
+            <span th:text="*{name}"></span>
+            <span th:text="*{price}"></span>
+        </a>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <input type="button" value="立即抢购" th:onclick="|showGoodsInfo(*{id})|">
+    </div>
+<script>
+    function showGoodsInfo(id){
+        window.location.href="/showGoodsInfo?goodsId="+id
+    }
+</script>
+</body>
+</html>
